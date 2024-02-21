@@ -57,7 +57,9 @@ private:
 	uint32_t base_ssrc;
 	std::shared_ptr<rtc::PeerConnection> peer_connection;
 	std::shared_ptr<rtc::Track> audio_track;
-	std::shared_ptr<rtc::Track> video_track;
+	std::shared_ptr<rtc::Track> video_track_h;
+	std::shared_ptr<rtc::Track> video_track_m;
+	std::shared_ptr<rtc::Track> video_track_l;
 	std::shared_ptr<rtc::RtcpSrReporter> audio_sr_reporter;
 	std::shared_ptr<rtc::RtcpSrReporter> video_sr_reporter;
 

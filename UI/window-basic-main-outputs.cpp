@@ -1477,7 +1477,7 @@ struct AdvancedOutput : BasicOutputHandler {
 	OBSEncoder streamArchiveEnc;
 	OBSEncoder streamTrack[MAX_AUDIO_MIXES];
 	OBSEncoder recordTrack[MAX_AUDIO_MIXES];
-	OBSEncoder videoStreaming;
+	OBSEncoder videoStreaming[3];
 	OBSEncoder videoRecording;
 
 	bool ffmpegOutput;
@@ -1641,13 +1641,27 @@ AdvancedOutput::AdvancedOutput(OBSBasic *main_) : BasicOutputHandler(main_)
 		}
 	}
 
-	videoStreaming = obs_video_encoder_create(streamEncoder,
-						  "advanced_video_stream",
-						  streamEncSettings, nullptr);
-	if (!videoStreaming)
+	// videoStreaming = obs_video_encoder_create(streamEncoder,
+	// 					  "advanced_video_stream",
+	// 					  streamEncSettings, nullptr);
+	videoStreaming[0] = obs_video_encoder_create(streamEncoder,
+						     "advanced_video_stream_1",
+						     streamEncSettings,
+						     nullptr);
+
+	videoStreaming[1] = obs_video_encoder_create(streamEncoder,
+						     "advanced_video_stream_2",
+						     streamEncSettings,
+						     nullptr);
+
+	videoStreaming[2] = obs_video_encoder_create(streamEncoder,
+						     "advanced_video_stream_3",
+						     streamEncSettings,
+						     nullptr);
+	if (!videoStreaming[0])
 		throw "Failed to create streaming video encoder "
 		      "(advanced output)";
-	obs_encoder_release(videoStreaming);
+	obs_encoder_release(videoStreaming[0]);
 
 	const char *rate_control = obs_data_get_string(
 		useStreamEncoder ? streamEncSettings : recordEncSettings,
@@ -1730,7 +1744,7 @@ void AdvancedOutput::UpdateStreamSettings()
 		config_get_string(main->Config(), "AdvOut", "Encoder");
 
 	OBSData settings = GetDataFromJsonFile("streamEncoder.json");
-	ApplyEncoderDefaults(settings, videoStreaming);
+	ApplyEncoderDefaults(settings, videoStreaming[0]);
 
 	if (applyServiceSettings) {
 		int bitrate = (int)obs_data_get_int(settings, "bitrate");
@@ -1764,11 +1778,11 @@ void AdvancedOutput::UpdateStreamSettings()
 	case VIDEO_FORMAT_P010:
 		break;
 	default:
-		obs_encoder_set_preferred_video_format(videoStreaming,
+		obs_encoder_set_preferred_video_format(videoStreaming[0],
 						       VIDEO_FORMAT_NV12);
 	}
 
-	obs_encoder_update(videoStreaming, settings);
+	obs_encoder_update(videoStreaming[0], settings);
 }
 
 inline void AdvancedOutput::UpdateRecordingSettings()
@@ -1840,8 +1854,8 @@ inline void AdvancedOutput::SetupStreaming()
 		}
 	}
 
-	obs_encoder_set_scaled_size(videoStreaming, cx, cy);
-	obs_encoder_set_gpu_scale_type(videoStreaming,
+	obs_encoder_set_scaled_size(videoStreaming[0], cx, cy);
+	obs_encoder_set_gpu_scale_type(videoStreaming[0],
 				       (obs_scale_type)rescaleFilter);
 
 	const char *id = obs_service_get_id(main->GetService());
@@ -1849,7 +1863,7 @@ inline void AdvancedOutput::SetupStreaming()
 		OBSDataAutoRelease settings = obs_data_create();
 		obs_service_apply_encoder_settings(main->GetService(), settings,
 						   nullptr);
-		obs_encoder_update(videoStreaming, settings);
+		obs_encoder_update(videoStreaming[0], settings);
 	}
 }
 
@@ -1889,10 +1903,16 @@ inline void AdvancedOutput::SetupRecording()
 		tracks = config_get_int(main->Config(), "AdvOut", "TrackIndex");
 
 	if (useStreamEncoder) {
-		obs_output_set_video_encoder(fileOutput, videoStreaming);
+		// obs_output_set_video_encoder(fileOutput, videoStreaming);
+		obs_encoder_set_scaled_size(videoStreaming[0], 640, 360);
+		obs_encoder_set_scaled_size(videoStreaming[1], 1280, 720);
+		obs_encoder_set_scaled_size(videoStreaming[2], 1920, 1080);
+		obs_output_set_video_encoder2(fileOutput, videoStreaming[0], 0);
+		obs_output_set_video_encoder2(fileOutput, videoStreaming[1], 1);
+		obs_output_set_video_encoder2(fileOutput, videoStreaming[2], 2);
 		if (replayBuffer)
 			obs_output_set_video_encoder(replayBuffer,
-						     videoStreaming);
+						     videoStreaming[0]);
 	} else {
 		if (rescaleFilter != OBS_SCALE_DISABLE && rescaleRes &&
 		    *rescaleRes) {
@@ -2112,7 +2132,11 @@ inline void AdvancedOutput::UpdateAudioSettings()
 
 void AdvancedOutput::SetupOutputs()
 {
-	obs_encoder_set_video(videoStreaming, obs_get_video());
+	// obs_encoder_set_video(videoStreaming, obs_get_video());
+
+	obs_encoder_set_video(videoStreaming[0], obs_get_video());
+	obs_encoder_set_video(videoStreaming[1], obs_get_video());
+	obs_encoder_set_video(videoStreaming[2], obs_get_video());
 	if (videoRecording)
 		obs_encoder_set_video(videoRecording, obs_get_video());
 	for (size_t i = 0; i < MAX_AUDIO_MIXES; i++) {
@@ -2229,7 +2253,10 @@ bool AdvancedOutput::SetupStreaming(obs_service_t *service)
 		outputType = type;
 	}
 
-	obs_output_set_video_encoder(streamOutput, videoStreaming);
+	// obs_output_set_video_encoder(streamOutput, videoStreaming);
+	obs_output_set_video_encoder(streamOutput, videoStreaming[0]);
+	obs_output_set_video_encoder(streamOutput, videoStreaming[1]);
+	obs_output_set_video_encoder(streamOutput, videoStreaming[2]);
 	if (!is_multitrack_output) {
 		obs_output_set_audio_encoder(streamOutput, streamAudioEnc, 0);
 	} else {

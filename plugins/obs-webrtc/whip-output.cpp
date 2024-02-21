@@ -97,8 +97,9 @@ void WHIPOutput::Data(struct encoder_packet *packet)
 		     audio_sr_reporter);
 		last_audio_timestamp = packet->dts_usec;
 	} else if (packet->type == OBS_ENCODER_VIDEO) {
+		auto width = obs_encoder_get_width(packet->encoder);
 		int64_t duration = packet->dts_usec - last_video_timestamp;
-		Send(packet->data, packet->size, duration, video_track,
+		Send(packet->data, packet->size, duration, video_track_h,
 		     video_sr_reporter);
 		last_video_timestamp = packet->dts_usec;
 	}
@@ -164,8 +165,8 @@ void WHIPOutput::ConfigureVideoTrack(std::string media_stream_id,
 	packetizer->addToChain(video_sr_reporter);
 	packetizer->addToChain(std::make_shared<rtc::RtcpNackResponder>());
 
-	video_track = peer_connection->addTrack(video_description);
-	video_track->setMediaHandler(packetizer);
+	video_track_h = peer_connection->addTrack(video_description);
+	video_track_h->setMediaHandler(packetizer);
 }
 
 /**
